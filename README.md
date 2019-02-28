@@ -6,6 +6,8 @@ Simple implementation of ones' complement integers.
 
 ### AGC registers
 
+Name | Bits | Description
+---- | ---- | -----------
 A  | 16 | Accumulator
 B  | 16 | Terminal register
 C  | 16 | Complement of B
@@ -21,6 +23,8 @@ Y  | 16 | Adder input 2
 Z  | 16 | Program counter
 
 ### Other parts
+Name              | Description
+----------------- | -----------
 CI flip-flop      | End around carry
 Stage 1 flip-flop | Stage counter
 Stage 2 flip-flop | Stage counter
@@ -29,6 +33,8 @@ BR2 flip-flop     | Branch register
 
 ### AGC control pulses
 
+Name   | Description
+------ | -----------
 A2X    | Enter bits 16 trough 1 of register A directly (not via WL's) into bit positions 16 through 1 of register X.
 CI     | Insert carry bit into position 1 of the adder.
 G2LS   | Enter bits 16 through 4 and 1 of register G into bit positions 16, 15, and 12 through 1 of register X. See control pulse ZAP.
