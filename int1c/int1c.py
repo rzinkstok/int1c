@@ -132,7 +132,6 @@ class Int1C(object):
         return result
 
 
-
 if __name__ == "__main__":
     x = Int1C(-7, 4)
     y = Int1C(7, 4)
