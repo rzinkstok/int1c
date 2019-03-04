@@ -8,7 +8,9 @@ Simple implementation of ones' complement integers.
 
 Definitions to be added.
 
-Instructions are composed of one or more subinstruction commands (e.g. MP0, MP1, MP3 for MP). Each 
+Instructions are composed of one or more subinstruction commands (e.g. MP0, MP1, MP3 for MP). Each subinstruction command
+lasts a full memory cycle time (MCT), which is divided into 12 clock periods. Each of these corresponds to an action,
+which is zero or more control pulses. All control pulses of an action are asserted during the full time period.
 
 ### Registers
 
@@ -20,9 +22,10 @@ C    | 16   | Complement of B
 CP   | X    | The register pointed to by the address in S 
 G    | 16   | Memory buffer register
 L    | 16   | Lower order accumulator
+Q    | 16   | Return address register
 S    | 12   | Address register
-SQ   | 7    | Sequence register, containing EXT, 3 SQ bits plus 3 extra bits
-U    | 16   | Adder output gates
+SQ   | 7    | Sequence register, containing the EXT bit, the 3 bit opcode, the 2 bit quarter code, and the next address bit
+U    | 16   | Adder output gates: always equal to c(X) + c(Y) + c(CI)
 WL   | 16   | Write lines (bus)
 X    | 16   | Adder input 1
 Y    | 16   | Adder input 2
@@ -30,14 +33,15 @@ Z    | 16   | Program counter
 
 ### Flip-flops
 
-Name              | Description
------------------ | -----------
-CI flip-flop      | End around carry
-Stage 1 flip-flop | Stage counter
-Stage 2 flip-flop | Stage counter
-BR1 flip-flop     | Branch register
-BR2 flip-flop     | Branch register
-Ext flip-flop     | Extend bit
+Name               | Description
+------------------ | -----------
+CI flip-flop       | End around carry
+Stage 1 flip-flop  | Stage counter bit 1
+Stage 2 flip-flop  | Stage counter bit 2
+Stage 3 flip-flop? | Stage counter bit 3?
+BR1 flip-flop      | Branch register bit 1
+BR2 flip-flop      | Branch register bit 2
+Ext flip-flop      | Extend bit
 
 ### Control pulses
 
@@ -90,10 +94,9 @@ RSTSTG | Reset the stage counter.
 RU     | Read bits 16 through 1 of adder output gates (U) to WL's 16 through 1.
 RUS    | Read bit 15 of adder output gates (U) to WL's 16 and 15, and bits 14 through 1 to WL's 14 through 1.
 RZ     | Read bits 16 through 1 of register Z to WL's 16 through 1.
-ST1    | Set stage 1 flip-flop to logic ONE at next time 12. [bit 1 of stage counter]
-ST2    | Set stage 2 flip-flop to logic ONE at next time 12. [bit 2 of stage counter]
+ST1    | Set stage 1 flip-flop to logic ONE at next time 12.
+ST2    | Set stage 2 flip-flop to logic ONE at next time 12.
 STAGE  | Execute next subinstruction as defined by the content of the divide stage counter.
-STD2   | ?
 TL15   | Copy bit 15 of register L into flip-flop BR1.
 TMZ    | Test for minus zero; if bits 16 through 1 are all logic ONE's, set flip-flop BR2 to logic ONE; ohterwise set BR2 to logic ZERO.
 TOV    | Test for overflow: set flip-flops BR1 and BR2 to 01 if positive overflow , to 10 if negative overflow.
@@ -116,7 +119,7 @@ WOVR   | Test for positive overflow. If register S ontains 0025, counter 0024 is
 WQ     | Clear register Q and write the contents of WL's 16 through 1 into bit positions 16 through 1. 
 WS     | Clear register S and write the contents of WL's 12 through 1 into bit positions 12 through 1.
 WSC    | Clear the CP register specified by the contents of register S and write the contents of WL's 16 through 1 into bit positions 16 through 1 of this register.
-WSQ    | Clear register SQ and write the contents of WL's 16 and 14 through 10 into bit positions 16 and 14 through 10, copy the content of the extend flip-flop into bit positions EXT of register Q. See control pulse NISQ. 
+WSQ    | Clear register SQ and write the contents of WL's 16 and 14 through 10 into bit positions 16 and 14 through 10, copy the content of the extend flip-flop into bit positions EXT of register SQ. See control pulse NISQ. 
 WY     | Clear registers X and Y; write the contents of WL's 16 through 1 into bit positions 16 through 1 of register Y.
 WY12   | Clear registers X and Y; write the contents of WL's 12 through 1 into bit positions 12 through 1 of register Y.
 WYD    | Clear registers X and Y; write the contents of WL's 16 and 14 through 1 into bit positions 16 and 15 through 2 of register Y; write the content of WL 16 into bit position 1 of register Y except in SHINC sequence, or unless bit 15 of register L is a logic ONE at PIFL, or if end around carry is inhibited (NEACON).
@@ -127,7 +130,7 @@ ZAP    | Generate control pulses RU, G2LS, and WALS.
 ZIP    | Generate control pulses A2X and L2GD; also perform read/write operations depending on the content of bit positions 15, 2, and 1 of register L as shown below.
 ZOUT   | Generate no rate output pulse.
 
-#### DVST complementing operations
+#### DVST Gray code
 
 Binary | Octal
 ------ | -----
@@ -152,31 +155,127 @@ L15 | L2 | L1 | Read | Write | Carry | Remember
  1  | 1  | 1  | -    | WY    | -     | MCRO
 
 
-## TS: Transfer to storage
+## Special subinstruction command STD2
+
+This subinstruction command is common to many instructions. It is triggered when the previous subinstruction sets the
+content of the stage counter to 010 (or perhaps to X1X?) with control pulse ST2. At the start of this subinstruction,
+register S
+
+The result is that the  program counter
+is incremented by 1, and the current instruction is loaded in B, S and SQ.
+
+At the start 
+ 1) RZ WY12 CI  # Read program counter (lowest 12 bits) to the Y register (adder input), and set the carry in to 1 
+ 2) RSC WG NISQ # NISQ seems to trigger RB and WSQ at time 12
+ 3) 
+ 4) 
+ 5) 
+ 6) RU WZ       # Read output of adder and write to the program counter
+ 7) 
+ 8) RAD WB WS   # RAD usually means RG, so the contents of G is copied to B and S. G contains the instruction pointed to by the S register.
+ 9) 
+10) 
+11) 
+12)             # NISQ causes RB and WSQ, so the sequence register is updated with the extend bit, opcode and quarter code of the instruction in B.
+
+
+## Start of instruction
+
+At the start of an instruction, the full instruction is present in the G and B registers, the 12 address bits are present in
+the S register, and the SQ register contains the extend bit, opcode and quarter code.
+
+## Memory
+
+Transfer to and from memory is handled through the G register. 
+
+ 4) EM to G
+ 6) FM to G
+10) G to EM
+
+
+## TS K: Transfer to storage
+
+Basic instruction; if c(A) is not an overflow quantity, copies c(A) into K and takes next instruction from I+1 where I 
+is location of TS K; if c(A) is a positive overflow quantity, copies c(A) into K, sets c(A) to +1, and takes next 
+instruction from I+2; if c(A) is a negative overflow quantity, copies c(A) into K, sets c(A) to -1, and takes next 
+instruction from I+1.
+
+Subinstruction commands: TS0, STD2
+Extend bit: 0
+Opcode: 101 (5)
+Quarter code: 10X (4 or 5)
+SQ: 054-055
+Stage counter: 000 (0) for TS0, 010 (2) for STD2
 
 ### TS0
 
  1) RL10BB WS
  2) RSC WG
- 3) RA WB TDV
+ 3) RA WB TOV
  4) RZ WY12
     00: - (A16,15 = 00 or A16,15 = 11)
-    01: CI (A16,15 = 01) overflow
-    10: CI (A16,15 = 10) underflow
+    01: CI (A16,15 = 01) positive overflow
+    10: CI (A16,15 = 10) negative overflow (underflow)
  5) 00: -
     01: RB1 WA
-    10: RC,R1C WA
+    10: R1C WA
  6) RU WZ
  7) RB WSC WG
  8) RZ WS ST2
   
+### Example from manual page 4-137
 
-## Addition
+Instruction:
+Address: 100 010 000 000 (octal: 4200, decimal: 2176), unswitched fixed
+A: 1 111 000 010 110 000 (octal: 170460, decimal: 61744)
+
+This should result in the value 1 111 000 010 110 000 present in memory location 100 010 000 000.
+
+#### Registers at start
+
+A: 1 111 000 010 110 000 (octal: 170460, decimal: 61744)
+B: 0 101 100 010 000 000 (octal: 054200)
+G: 0 101 100 010 000 000 (octal: 054200)
+S: 100 010 000 000 (octal: 4200)
+
+Z: 000 010 111 101 100 (octal: 02754)
+U: 000 010 111 101 100 (octal: 02754)
+X: 000 000 000 000 000
+Y: 000 010 111 101 011 (octal: 02753)
+CI: 1
+
+SQ: 0 101 100 (054)
+
+#### Actions
+
+TS0:
+ 1) Lower 10 bits of B to S, S now contains 000 010 000 000 (octal: 0200)
+ 2) RSC/WG inhibited by address 0200 in S
+ 3) A to B, B now contains 1 111 000 010 110 000 (octal: 170460, decimal: 61744); no overflow in B, so BR is now 00
+ 4) Erasable memory strobe: EM to G, G now contains 0 000 000 100 001 001 (octal: 000411). Clear X, Z to Y, X is now 000 000 000 000 000, Y is now 000 010 111 101 100 (octal: 02754). CI is apparently cleared as well. U is now 000 010 111 101 100 (octal: 02754).
+ 5) No overflow, so nothing happens
+ 6) U to Z, Z now contains 000 010 111 101 100 (octal: 02754)
+ 7) WSC is inhibited by address 0200 in S, B to G, G now contains 1 111 000 010 110 000 (octal: 170460, decimal: 61744).
+ 8) Z to S, so the address register is set up for the next instruction, S now contains 000 010 111 101 100 (octal: 02754), ST2 makes sure STD2 is executed next
+10) G to EM, so memory location 
+  
+STD2:
+
+## AD K: Addition
+
+Basic instruction; adds c(K) to c(A); stores result in A; takes next instruction from I + 1 where I is location of AD K.
+
+Subinstruction commands: AD0, STD2
+Extend bit: 0
+Opcode: 110 (6)
+Quarter code: n/a
+SQ: 060-067
+Stage counter: 000 (0) for AD0, 010 (2) for STD2
 
 ### AD0
 
- 1) 
- 2) RSC WG
+ 1)             
+ 2) RSC WG      
  3)
  4)
  5)
@@ -187,15 +286,65 @@ L15 | L2 | L1 | Read | Write | Carry | Remember
 10) RB WY A2X
 11) RU WA
 
-So:
-memory location to G
-G to B
+### Example from manual page 4-141
 
-Z to S (plus stage counter) WHY?
-B to G WHY?
-B to Y, A to X direct
-U to A
- 
+Instruction: 0 110 001 010 001 011 (octal: 0601213)
+Address: 001 010 001 011 (octal: 1213, decimal: 651), unswitched erasable
+A: 0 000 000 001 000 010, (octal: 000102, decimal: 66)
+Contents of memory location 1214: 0 010 101 010 101 010, (octal: 25252 , decimal: 10922)
+
+This should result in 10988 in A, the next instruction loaded in B, G, S and SQ, and the address of the instruction after that in Z. 
+
+#### Registers at start
+
+A: 0 000 000 001 000 010 (decimal: 66)
+B: 0 110 001 010 001 011 (octal: 0601213)
+G: 0 110 001 010 001 011 (octal: 0601213)
+S: 001 010 001 011 (octal: 1213, decimal: 651)
+
+Z: 000 000 110 110 000 (octal: 000660)
+U: 000 000 110 110 000 (octal: 000660)
+X: 000 000 000 000 000
+Y: 000 000 110 101 111 (octal: 000657)
+CI: 1
+
+SQ: 0 110 001 (octal: 061)
+
+#### Actions
+
+AD0:
+ 2) RSC/WG inhibited by address 1213 (why?)
+ 4) Erasable memory strobe: EM to G (normal memory fetch), G now contains 0 010 101 010 101 010 (octal: 025252, decimal 10922)
+ 6) Fixed memory strobe: inhibited, erasable storage used
+ 7) G to B, B now contains 0 010 101 010 101 010 (octal: 025252, decimal 10922)
+ 8) Z to S, so the address register is set up for the next instruction, S now contains 000 000 110 110 000 (octal: 000660), ST2 makes sure STD2 is executed next
+ 9) B to G, G again (still) contains 0 010 101 010 101 010 (octal: 025252, decimal 10922)
+10) B to Y, A to X, X now contains 0 000 000 001 000 010 (decimal: 66, octal: 000102), Y now contains 0 010 101 010 101 010 (decimal: 10922, octal: 025252), CI is apparently cleared, U now contains 0 010 101 011 101 100 (decimal: 10988, octal: 025354). At the same time, G is copied to memory.
+11) U to A, A now contains 0 010 101 011 101 100 (decimal: 10988, octal: 025354)
+
+STD2:
+ 1) X cleared, Z to Y, CI set to 1, so Y now contains 000 000 110 110 000 (octal: 000660), U now contains 000 000 110 110 001 (octal: 000661)
+ 2) RSC/WG inhibited by address 0660 (why?)
+ 4) Erasable memory strobe: EM to G, G now contains contents of memory location 0660 (next instruction)
+ 6) Fixed memory strobe: inhibited due to address 0660, U to Z, Z now contains 000 000 110 110 001 (octal: 000661)
+ 8) G to B and S, B now contains next instruction, S contains address contained in next instruction
+12) B to SQ, SQ now contains extend bit, opcode and quarter code of next instruction
+
+#### Registers at end
+
+A: 0 010 101 011 101 100 (decimal: 10988, octal: 025354)
+B: Next instruction
+G: Next instruction
+S: Address contained in the next instruction
+
+Z: 000 000 110 110 001 (octal: 000661)
+U: 000 000 110 110 001 (octal: 000661)
+X: 000 000 000 000 000
+Y: 000 000 110 110 000 (octal: 000660)
+CI: 1
+
+SQ: extend bit, opcode and quarter code of next instruction
+
 ## Multiplication
 
 
