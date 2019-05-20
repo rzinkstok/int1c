@@ -8,6 +8,3 @@ verify_ssl = true
 [packages]
 int1c = {path = "."}
 pytest = "*"
-
-[requires]
-python_version = "3.7"
